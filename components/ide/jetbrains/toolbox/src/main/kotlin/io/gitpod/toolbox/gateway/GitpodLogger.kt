@@ -5,9 +5,9 @@
 package io.gitpod.toolbox.gateway
 
 import com.jetbrains.toolbox.gateway.deploy.DiagnosticInfoCollector
+import org.slf4j.Logger
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
-import org.slf4j.Logger
 
 
 class GitpodLogger(private val logger:Logger) : DiagnosticInfoCollector {

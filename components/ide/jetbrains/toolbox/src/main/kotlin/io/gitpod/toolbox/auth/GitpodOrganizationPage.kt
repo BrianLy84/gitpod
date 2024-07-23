@@ -29,11 +29,11 @@ class GitpodOrganizationPage(val authManager: GitpodAuthManager, val publicApi: 
         val options = mutableListOf<AutocompleteItem>()
         options.addAll(organizations.map { org ->
             MenuItem(org.name, null, null) {
-                authManager.getCurrentAccount()?.organizationId = org.id
+                Utils.gitpodSettings.organizationId = org.id
                 Utils.toolboxUi.hideUiPage(this)
             }
         })
-        val orgName = organizations.find { it.id == authManager.getCurrentAccount()?.organizationId }?.name ?: ""
+        val orgName = organizations.find { it.id == Utils.gitpodSettings.organizationId }?.name ?: ""
         AutocompleteTextField("Organization", orgName, options, 1.0f) {
             if (it.isNullOrEmpty()) {
                 ValidationResult.Invalid("Organization is required")

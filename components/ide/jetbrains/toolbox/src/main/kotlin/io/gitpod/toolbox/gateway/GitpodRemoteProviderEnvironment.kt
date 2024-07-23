@@ -7,6 +7,7 @@ package io.gitpod.toolbox.gateway
 import com.jetbrains.toolbox.gateway.AbstractRemoteProviderEnvironment
 import com.jetbrains.toolbox.gateway.EnvironmentVisibilityState
 import com.jetbrains.toolbox.gateway.environments.EnvironmentContentsView
+import com.jetbrains.toolbox.gateway.states.EnvironmentStateConsumer
 import com.jetbrains.toolbox.gateway.states.StandardRemoteEnvironmentState
 import com.jetbrains.toolbox.gateway.ui.ActionDescription
 import com.jetbrains.toolbox.gateway.ui.ObservableList
@@ -14,6 +15,7 @@ import io.gitpod.publicapi.v1.WorkspaceOuterClass
 import io.gitpod.publicapi.v1.WorkspaceOuterClass.WorkspacePhase
 import io.gitpod.toolbox.auth.GitpodAuthManager
 import io.gitpod.toolbox.components.SimpleButton
+import io.gitpod.toolbox.service.ConnectParams
 import io.gitpod.toolbox.service.GitpodPublicApiManager
 import io.gitpod.toolbox.service.Utils
 import kotlinx.coroutines.channels.BufferOverflow
@@ -24,7 +26,7 @@ import java.util.concurrent.CompletableFuture
 
 class GitpodRemoteProviderEnvironment(
     private val authManager: GitpodAuthManager,
-    private val workspaceId: String,
+    private val connectParams: ConnectParams,
     private val publicApi: GitpodPublicApiManager,
 ) : AbstractRemoteProviderEnvironment() {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -32,7 +34,7 @@ class GitpodRemoteProviderEnvironment(
     private val contentsViewFuture: CompletableFuture<EnvironmentContentsView> = CompletableFuture.completedFuture(
         GitpodSSHEnvironmentContentsView(
             authManager,
-            workspaceId,
+            connectParams,
             publicApi,
         )
     )
@@ -40,7 +42,7 @@ class GitpodRemoteProviderEnvironment(
     private val lastWSEnvState = MutableSharedFlow<WorkspaceEnvState>(1, 0, BufferOverflow.DROP_OLDEST)
     private var lastPhase: WorkspacePhase =
         WorkspacePhase.newBuilder().setNameValue(WorkspacePhase.Phase.PHASE_UNSPECIFIED_VALUE).build()
-    private var isMarkActive = false
+    public var isMarkActive = false
         set(value) {
             if (field != value) {
                 field = value
@@ -53,14 +55,6 @@ class GitpodRemoteProviderEnvironment(
     }
 
     init {
-        logger.info("==================GitpodRemoteProviderEnvironment.init $workspaceId")
-        Utils.coroutineScope.launch {
-            Utils.dataManager.watchWorkspaceStatus(workspaceId) {
-                lastPhase = it.phase
-                lastWSEnvState.tryEmit(WorkspaceEnvState(it.phase, isMarkActive))
-            }
-        }
-
         Utils.coroutineScope.launch {
             lastWSEnvState.collect { lastState ->
                 val state = lastState.getState()
@@ -76,20 +70,30 @@ class GitpodRemoteProviderEnvironment(
                         Utils.coroutineScope.launch { contentsViewFuture.get().close() }
                     }
                 }
-                if (lastState.isStoppable) {
-                    actions += SimpleButton("Stop workspace") {
-                        logger.info("===============stop workspace clicked")
-                    }
-                }
                 actionList.clear()
                 actionList.addAll(actions)
                 listenerSet.forEach { it.consume(state) }
             }
         }
+
+        Utils.coroutineScope.launch {
+            Utils.dataManager.watchWorkspaceStatus(connectParams.workspaceId) {
+                lastPhase = it.phase
+                lastWSEnvState.tryEmit(WorkspaceEnvState(it.phase, isMarkActive))
+            }
+        }
     }
 
-    override fun getId(): String = workspaceId
-    override fun getName(): String = workspaceId
+    override fun addStateListener(consumer: EnvironmentStateConsumer): Boolean {
+        val ok = super.addStateListener(consumer)
+        Utils.coroutineScope.launch {
+            lastWSEnvState.tryEmit(WorkspaceEnvState(lastPhase, isMarkActive))
+        }
+        return ok
+    }
+
+    override fun getId(): String = connectParams.uniqueID
+    override fun getName(): String = connectParams.resolvedWorkspaceId
 
     override fun getContentsView(): CompletableFuture<EnvironmentContentsView> = contentsViewFuture
 
@@ -104,7 +108,6 @@ class GitpodRemoteProviderEnvironment(
 private class WorkspaceEnvState(val phase: WorkspacePhase, val isMarkActive: Boolean) {
     val isConnectable = phase.nameValue == WorkspaceOuterClass.WorkspacePhase.Phase.PHASE_RUNNING_VALUE && !isMarkActive
     val isCloseable = isMarkActive
-    val isStoppable = phase.nameValue == WorkspaceOuterClass.WorkspacePhase.Phase.PHASE_RUNNING_VALUE
 
     fun getState() = run {
         if (isMarkActive && phase.nameValue == WorkspaceOuterClass.WorkspacePhase.Phase.PHASE_RUNNING_VALUE) {

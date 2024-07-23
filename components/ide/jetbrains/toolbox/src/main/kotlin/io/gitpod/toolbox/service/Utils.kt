@@ -11,6 +11,7 @@ import com.jetbrains.toolbox.gateway.connection.ToolboxProxySettings
 import com.jetbrains.toolbox.gateway.ssh.validation.SshConnectionValidator
 import com.jetbrains.toolbox.gateway.ui.ObservablePropertiesFactory
 import com.jetbrains.toolbox.gateway.ui.ToolboxUi
+import io.gitpod.toolbox.gateway.GitpodSettings
 import kotlinx.coroutines.CoroutineScope
 import okhttp3.OkHttpClient
 import java.net.Proxy
@@ -26,6 +27,7 @@ object Utils {
     lateinit var observablePropertiesFactory: ObservablePropertiesFactory private set
     lateinit var proxySettings: ToolboxProxySettings private set
 
+    lateinit var gitpodSettings: GitpodSettings private set
     lateinit var dataManager: DataManager private set
 
     lateinit var toolboxUi: ToolboxUi private set
@@ -45,6 +47,7 @@ object Utils {
         observablePropertiesFactory = serviceLocator.getService(ObservablePropertiesFactory::class.java)
         proxySettings = serviceLocator.getService(ToolboxProxySettings::class.java)
         dataManager = DataManager()
+        gitpodSettings = GitpodSettings()
     }
 
     fun openUrl(url: String) {

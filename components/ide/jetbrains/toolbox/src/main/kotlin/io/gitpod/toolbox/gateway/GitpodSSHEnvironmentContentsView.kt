@@ -8,6 +8,7 @@ import com.jetbrains.toolbox.gateway.environments.ManualEnvironmentContentsView
 import com.jetbrains.toolbox.gateway.environments.SshEnvironmentContentsView
 import com.jetbrains.toolbox.gateway.ssh.SshConnectionInfo
 import io.gitpod.toolbox.auth.GitpodAuthManager
+import io.gitpod.toolbox.service.ConnectParams
 import io.gitpod.toolbox.service.GitpodConnectionProvider
 import io.gitpod.toolbox.service.GitpodPublicApiManager
 import io.gitpod.toolbox.service.Utils
@@ -17,7 +18,7 @@ import java.util.concurrent.CompletableFuture
 
 class GitpodSSHEnvironmentContentsView(
     private val authManager: GitpodAuthManager,
-    private val workspaceId: String,
+    private val connectParams: ConnectParams,
     private val publicApi: GitpodPublicApiManager,
 ) : SshEnvironmentContentsView, ManualEnvironmentContentsView {
     private var cancel = {}
@@ -27,7 +28,7 @@ class GitpodSSHEnvironmentContentsView(
 
     override fun getConnectionInfo(): CompletableFuture<SshConnectionInfo> {
         return Utils.coroutineScope.future {
-            val provider = GitpodConnectionProvider(authManager, workspaceId, publicApi)
+            val provider = GitpodConnectionProvider(authManager, connectParams, publicApi)
             val (connInfo, cancel) = provider.connect()
             this@GitpodSSHEnvironmentContentsView.cancel = cancel
             return@future connInfo

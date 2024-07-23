@@ -1,5 +1,5 @@
 [versions]
-gateway = "2.4.0.30948"
+gateway = "2.4.0.31544"
 kotlin = "1.9.0"
 coroutines = "1.7.3"
 serialization = "1.5.0"

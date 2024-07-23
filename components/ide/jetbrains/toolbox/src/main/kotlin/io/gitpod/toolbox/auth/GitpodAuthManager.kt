@@ -60,19 +60,44 @@ class GitpodAuthManager {
         manager.addEventListener {
             when (it.type) {
                 AuthEvent.Type.LOGIN -> {
-                    logger.info("account ${it.accountId} logged in")
+                    logger.debug("gitpod: user logged in ${it.accountId}")
+                    resetCurrentAccount(it.accountId)
                     loginListeners.forEach { it() }
                 }
+
                 AuthEvent.Type.LOGOUT -> {
-                    logger.info("account ${it.accountId} logged out")
+                    logger.debug("gitpod: user logged out ${it.accountId}")
+                    resetCurrentAccount(it.accountId)
                     logoutListeners.forEach { it() }
                 }
             }
         }
     }
 
+    private fun resetCurrentAccount(accountId: String) {
+        val account = manager.accountsWithStatus.find { it.account.id == accountId }?.account ?: return
+        logger.debug("reset settings for ${account.getHost()}")
+        Utils.gitpodSettings.resetSettings(account.getHost())
+    }
+
     fun getCurrentAccount(): GitpodAccount? {
-        return manager.accountsWithStatus.firstOrNull()?.account
+        return manager.accountsWithStatus.find { it.account.getHost() == Utils.gitpodSettings.gitpodHost }?.account
+    }
+
+    fun loginWithHost(host: String): Boolean {
+        if (getCurrentAccount()?.getHost() == host) {
+            // TODO: validate token is still available
+            return true
+        }
+        val account = manager.accountsWithStatus.find { it.account.getHost() == host }?.account
+        if (account != null) {
+            Utils.gitpodSettings.gitpodHost = host
+            loginListeners.forEach { it() }
+            // TODO: validate token is still available
+            return true
+        }
+        Utils.openUrl(this.getOAuthLoginUrl(host))
+        return false
     }
 
     fun logout() {
@@ -135,47 +160,11 @@ class GitpodAccount(
     private val name: String,
     private val host: String
 ) : Account {
-    private val orgSelectedListeners: MutableList<(String) -> Unit> = mutableListOf()
-    private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun getId() = id
     override fun getFullName() = name
     fun getCredentials() = credentials
     fun getHost() = host
-
-    private fun getStoreKey(key: String) = "USER:${id}:${key}"
-
-    var organizationId: String?
-        get() = Utils.settingStore[getStoreKey("ORG")]
-        set(value){
-            if (value == null) {
-                return
-            }
-            Utils.settingStore[getStoreKey("ORG")] = value
-            orgSelectedListeners.forEach { it(value) }
-        }
-
-    var preferEditor: String?
-        get() = Utils.settingStore[getStoreKey("EDITOR")]
-        set(value){
-            if (value == null) {
-                return
-            }
-            Utils.settingStore[getStoreKey("EDITOR")] = value
-        }
-
-    var preferWorkspaceClass: String?
-        get() = Utils.settingStore[getStoreKey("WS_CLS")]
-        set(value){
-            if (value == null) {
-                return
-            }
-            Utils.settingStore[getStoreKey("WS_CLS")] = value
-        }
-
-    fun onOrgSelected(listener: (String) -> Unit) {
-        orgSelectedListeners.add(listener)
-    }
 
     fun encode(): String {
         return Json.encodeToString(this)

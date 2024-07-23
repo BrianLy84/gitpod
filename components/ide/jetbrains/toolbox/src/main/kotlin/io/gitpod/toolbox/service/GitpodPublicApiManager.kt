@@ -50,7 +50,7 @@ class GitpodPublicApiManager(private val authManger: GitpodAuthManager) {
     }
 
     private val orgId: String
-        get() = account?.organizationId ?: throw IllegalStateException("Organization not selected")
+        get() = Utils.gitpodSettings.organizationId ?: throw IllegalStateException("Organization not selected")
 
     suspend fun listOrganizations(): List<OrganizationOuterClass.Organization> {
         val organizationApi = organizationApi ?: throw IllegalStateException("No client")

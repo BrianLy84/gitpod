@@ -83,3 +83,7 @@ class DataManager {
         }
     }
 }
+
+fun WorkspaceOuterClass.Workspace.getConnectParams(): ConnectParams {
+    return ConnectParams(id, false)
+}

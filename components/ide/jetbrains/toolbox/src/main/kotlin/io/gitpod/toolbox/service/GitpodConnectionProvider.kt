@@ -10,21 +10,24 @@ import com.jetbrains.toolbox.gateway.ssh.SshConnectionInfo
 import io.gitpod.publicapi.v1.WorkspaceOuterClass
 import io.gitpod.toolbox.auth.GitpodAuthManager
 import kotlinx.serialization.Serializable
+import org.slf4j.LoggerFactory
 
 class GitpodConnectionProvider(
     private val authManager: GitpodAuthManager,
-    private val workspaceId: String,
+    private val connectParams: ConnectParams,
     private val publicApi: GitpodPublicApiManager,
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
     private val activeConnections = ConcurrentHashMap<String, Boolean>()
 
     suspend fun connect(): Pair<SshConnectionInfo, () -> Unit> {
+        val workspaceId = connectParams.workspaceId
         val workspace = publicApi.getWorkspace(workspaceId).workspace
         val ownerTokenResp = publicApi.getWorkspaceOwnerToken(workspaceId)
         val account = authManager.getCurrentAccount() ?: throw Exception("No account found")
 
         // TODO: debug workspace
-        val connectParams = ConnectParams(account.getHost(), workspaceId, false)
+        val connectParams = ConnectParams(workspaceId, false)
 
         val (serverPort, cancel) = tunnelWithWebSocket(workspace, connectParams, ownerTokenResp.ownerToken)
 
@@ -80,13 +83,12 @@ class GitpodWebSocketSshConnectionInfo(
 }
 
 data class ConnectParams(
-    val gitpodHost: String,
     val workspaceId: String,
     val debugWorkspace: Boolean = false,
 ) {
     val resolvedWorkspaceId = "${if (debugWorkspace) "debug-" else ""}$workspaceId"
-    val title = "$resolvedWorkspaceId ($gitpodHost)"
-    val uniqueID = "$gitpodHost-$workspaceId-$debugWorkspace"
+    val title = "$resolvedWorkspaceId"
+    val uniqueID = "$workspaceId-$debugWorkspace"
 }
 
 @Serializable

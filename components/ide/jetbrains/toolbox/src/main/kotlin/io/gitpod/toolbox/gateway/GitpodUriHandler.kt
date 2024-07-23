@@ -31,10 +31,13 @@ abstract class AbstractUriHandler<T> : UriHandler<T> {
     }
 }
 
-class GitpodOpenInToolboxUriHandler(val handler: (ConnectParams) -> Unit) : AbstractUriHandler<ConnectParams>() {
-    override fun handle(data: ConnectParams): Future<Void?> = CompletableFuture.runAsync { handler(data) }
+class GitpodOpenInToolboxUriHandler(val handler: (Pair<String, ConnectParams>) -> Unit) : AbstractUriHandler<Pair<String, ConnectParams>>() {
 
-    override fun parseUri(uri: URI): ConnectParams {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
+    override fun handle(data: Pair<String, ConnectParams>): Future<Void?> = CompletableFuture.runAsync { handler(data) }
+
+    override fun parseUri(uri: URI): Pair<String, ConnectParams> {
         val path = uri.path.split("/").last()
         if (path != "open-in-toolbox") {
             throw IllegalArgumentException("invalid URI: $path")
@@ -54,7 +57,7 @@ class GitpodOpenInToolboxUriHandler(val handler: (ConnectParams) -> Unit) : Abst
         } catch (e: IllegalArgumentException) {
             throw IllegalArgumentException("invalid host: $host")
         }
-
-        return ConnectParams(host, workspaceId, debugWorkspace)
+        logger.info("gitpod: parsed URI: $host, $workspaceId, $debugWorkspace")
+        return Pair("https://$host", ConnectParams(workspaceId, debugWorkspace))
     }
 }

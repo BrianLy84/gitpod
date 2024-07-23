@@ -1,3 +1,7 @@
+// Copyright (c) 2024 Gitpod GmbH. All rights reserved.
+// Licensed under the GNU Affero General Public License (AGPL).
+// See License.AGPL.txt in the project root for license information.
+
 import com.github.jk1.license.filter.ExcludeTransitiveDependenciesFilter
 import com.github.jk1.license.render.JsonReportRenderer
 import org.jetbrains.intellij.pluginRepository.PluginRepositoryFactory
@@ -34,12 +38,12 @@ dependencies {
     implementation("com.connectrpc:connect-kotlin:0.6.0")
     // Java specific dependencies.
     implementation("com.connectrpc:connect-kotlin-google-java-ext:0.6.0")
-    implementation("com.google.protobuf:protobuf-java:4.26.0")
+    implementation("com.google.protobuf:protobuf-java:4.27.2")
     // WebSocket
     compileOnly("javax.websocket:javax.websocket-api:1.1")
     compileOnly("org.eclipse.jetty.websocket:websocket-api:9.4.54.v20240208")
     implementation("org.eclipse.jetty.websocket:javax-websocket-client-impl:9.4.54.v20240208")
-    // RD-Core
+    // RD-Core https://mvnrepository.com/artifact/com.jetbrains.rd/rd-core
     implementation("com.jetbrains.rd:rd-core:2024.1.1")
 
     implementation(libs.gateway.api)
